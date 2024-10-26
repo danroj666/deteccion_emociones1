@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplicación de Análisis Facial</title>
+    <title>WebFacial</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
@@ -11,7 +11,7 @@
 <body class="bg-dark text-light">
     <div class="container d-flex align-items-center justify-content-center min-vh-100">
         <div class="card shadow-lg p-4" style="width: 100%; max-width: 600px;">
-            <h1 class="text-center font-weight-bold mb-4 text-dark">Análisis Facial</h1>
+            <h1 class="text-center font-weight-bold mb-4 text-dark">WebFacial</h1>
             
             <div class="mb-4">
                 <h2 class="h5 font-weight-bold text-white mb-3">Subir Imagen</h2>
@@ -39,7 +39,7 @@
             </div>
 
             <!-- Error Display -->
-            <div id="error" class="hidden mt-4 alert alert-danger">
+            <div id="error" class="hidden mt-4 alert alert-danger" style="display:none;">
             </div>
 
             <!-- Existing Images Section -->
@@ -76,11 +76,14 @@
                 success: function (response) {
                     $('#results').removeClass('hidden');
                     $('#resultImage').attr('src', 'data:image/png;base64,' + response.image);
+                    $('#error').hide();  // Ocultar el mensaje de error si fue visible
                 },
                 error: function (xhr) {
                     $('#error')
                         .removeClass('hidden')
+                        .show()
                         .text(xhr.responseJSON?.error || 'Ocurrió un error');
+                    $('#results').addClass('hidden'); // Ocultar resultados si hay error
                 }
             });
         });
@@ -99,11 +102,14 @@
                 success: function (response) {
                     $('#results').removeClass('hidden');
                     $('#resultImage').attr('src', 'data:image/png;base64,' + response.image);
+                    $('#error').hide();  // Ocultar el mensaje de error si fue visible
                 },
                 error: function (xhr) {
                     $('#error')
                         .removeClass('hidden')
+                        .show()
                         .text(xhr.responseJSON?.error || 'Ocurrió un error');
+                    $('#results').addClass('hidden'); // Ocultar resultados si hay error
                 }
             });
         }
