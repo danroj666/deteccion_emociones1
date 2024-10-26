@@ -10,12 +10,22 @@
     <div class="container mt-5">
         <h2 class="text-center">Detección de Puntos Faciales en Imágenes</h2>
         
-        <!-- Formulario para subir imagen -->
-        <form action="/" method="POST" enctype="multipart/form-data" class="text-center my-4">
+        <!-- Formulario para subir imagen (POST) -->
+        <form action="/analyze" method="POST" enctype="multipart/form-data" class="text-center my-4">
             <input type="file" name="file" class="form-control mb-3" required>
             <button type="submit" class="btn btn-primary">Subir y Procesar Imagen</button>
         </form>
-        
+
+        <!-- Seleccionar imagen existente -->
+        <form action="/analyze" method="POST" class="text-center my-4">
+            <select name="existing_file" class="form-control mb-3">
+                {% for image in images %}
+                <option value="{{ image }}">{{ image }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-secondary">Analizar Imagen Existente</button>
+        </form>
+
         <!-- Mensaje de error -->
         {% if error %}
         <div class="alert alert-danger text-center">
