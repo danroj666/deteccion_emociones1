@@ -28,8 +28,13 @@
             <!-- Results Section -->
             <div id="results" class="hidden mb-4">
                 <h2 class="h5 font-weight-bold text-white mb-3">Resultados del Análisis</h2>
-                <div class="border rounded p-2 bg-light">
-                    <img id="resultImage" class="img-fluid" src="" alt="Resultado del Análisis">
+                <div class="border rounded p-2 bg-light shadow">
+                    <div class="text-center mb-2">
+                        <img id="resultImage" class="img-fluid rounded" src="" alt="Resultado del Análisis">
+                    </div>
+                    <div class="text-center">
+                        <button class="btn btn-primary" onclick="downloadImage()">Descargar Imagen</button>
+                    </div>
                 </div>
             </div>
 
@@ -125,6 +130,15 @@
 
         function hideLoading() {
             $('#loading').addClass('hidden');
+        }
+
+        // Descargar imagen
+        function downloadImage() {
+            const imageSrc = $('#resultImage').attr('src');
+            const link = document.createElement('a');
+            link.href = imageSrc;
+            link.download = 'resultado_analisis.png'; // Nombre del archivo a descargar
+            link.click();
         }
     </script>
 </body>
