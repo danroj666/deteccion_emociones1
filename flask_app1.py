@@ -6,9 +6,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-import matplotlib 
+import matplotlib
 matplotlib.use('Agg')
 from pyngrok import ngrok
+import mediapipe as mp
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
@@ -18,8 +19,8 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
 # Configuración de MediaPipe para detección de rostros
-mp_face_mesh = cv2.face.FaceMesh.create()
-face_mesh = mp_face_mesh
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1)
 
 def analizar_imagen(ruta_imagen):
     """
