@@ -3,68 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facial Analysis App</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Aplicación de Análisis Facial</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 </head>
-<body class="bg-gray-800 text-gray-300">
-    <div class="max-w-3xl mx-auto p-6">
-        <h1 class="text-5xl font-bold text-center mb-6 text-blue-400">Aplicación de Análisis Facial</h1>
-        
-        <section class="bg-gray-700 rounded-lg shadow-lg p-6 mb-8">
-            <h2 class="text-3xl font-semibold mb-4 text-blue-300">Subir una Imagen</h2>
-            <form id="uploadForm" class="space-y-4">
-                <div class="flex justify-center">
-                    <label class="flex flex-col w-full h-48 border-4 border-dashed border-blue-500 hover:border-blue-400 bg-gray-600 hover:bg-gray-500 rounded-lg transition duration-200">
-                        <div class="flex flex-col items-center justify-center pt-8">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-blue-300" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
-                            </svg>
-                            <p class="pt-2 text-md text-gray-400">Arrastra y suelta tu imagen aquí o haz clic para seleccionar</p>
+<body class="bg-dark text-light">
+    <div class="container d-flex align-items-center justify-content-center min-vh-100">
+        <div class="card shadow-lg p-4" style="width: 100%; max-width: 600px;">
+            <h1 class="text-center font-weight-bold mb-4">Análisis Facial</h1>
+            
+            <div class="mb-4">
+                <h2 class="h5 font-weight-bold text-white mb-3">Subir Imagen</h2>
+                <form id="uploadForm">
+                    <div class="input-group mb-3">
+                        <input type="file" class="form-control" name="file" accept=".jpg,.jpeg,.png" required>
+                        <div class="input-group-append">
+                            <button class="btn btn-success" type="submit">Analizar</button>
                         </div>
-                        <input type="file" class="opacity-0" name="file" accept=".jpg,.jpeg,.png" />
-                    </label>
-                </div>
-                <button type="submit" class="w-full px-6 py-3 text-lg font-semibold bg-blue-600 rounded-lg hover:bg-blue-700 transition duration-200">
-                    Analizar Imagen
-                </button>
-            </form>
-        </section>
-
-        <section id="results" class="hidden mb-8">
-            <h2 class="text-3xl font-semibold mb-4 text-blue-300">Resultados del Análisis</h2>
-            <div class="border border-blue-600 rounded-lg p-4 bg-gray-700">
-                <img id="resultImage" class="w-full h-auto mx-auto rounded-lg shadow-lg" src="" alt="Resultado del Análisis">
-            </div>
-        </section>
-
-        <div id="loading" class="hidden mb-8">
-            <div class="flex items-center justify-center p-4">
-                <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div>
-            </div>
-        </div>
-
-        <div id="error" class="hidden mb-8 p-4 bg-red-800 border border-red-700 text-red-200 rounded-lg"></div>
-
-        <!-- Sección de Imágenes Existentes -->
-        {% if images %}
-        <section class="mt-6">
-            <h2 class="text-3xl font-semibold mb-4 text-blue-300">Imágenes Anteriores</h2>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {% for image in images %}
-                <div class="relative group">
-                    <img src="{{ url_for('uploaded_file', filename=image) }}" 
-                         alt="{{ image }}" 
-                         class="w-full h-40 object-cover rounded-lg cursor-pointer transition-transform duration-200 hover:scale-105"
-                         onclick="analyzeExisting('{{ image }}')">
-                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-blue-200 text-sm p-1 rounded-b-lg truncate">
-                        {{ image }}
                     </div>
-                </div>
-                {% endfor %}
+                </form>
             </div>
-        </section>
-        {% endif %}
+
+            <!-- Results Section -->
+            <div id="results" class="hidden mb-4">
+                <h2 class="h5 font-weight-bold text-white mb-3">Resultados del Análisis</h2>
+                <div class="border rounded p-2 bg-light">
+                    <img id="resultImage" class="img-fluid" src="" alt="Resultado del Análisis">
+                </div>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="hidden">
+                <div class="spinner-border text-success" role="status">
+                    <span class="sr-only">Cargando...</span>
+                </div>
+            </div>
+
+            <!-- Error Display -->
+            <div id="error" class="hidden mt-4 alert alert-danger">
+            </div>
+
+            <!-- Existing Images Section -->
+            {% if images %}
+            <div class="mt-4">
+                <h2 class="h5 font-weight-bold text-white mb-3">Imágenes Cargadas Previamente</h2>
+                <div class="row">
+                    {% for image in images %}
+                    <div class="col-6 mb-2">
+                        <img src="{{ url_for('uploaded_file', filename=image) }}" 
+                             alt="{{ image }}" 
+                             class="img-thumbnail" 
+                             onclick="analyzeExisting('{{ image }}')">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
 
     <script>
