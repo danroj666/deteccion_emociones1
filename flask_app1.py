@@ -2,7 +2,8 @@ import cv2
 import os
 import mediapipe as mp
 import numpy as np
-from flask import Flask, request, render_template, redirect
+from flask import Flask, request, render_template, redirect, send_file
+import io
 
 app = Flask(__name__)
 
@@ -14,14 +15,9 @@ face_mesh = mp_face_mesh.FaceMesh(
     min_detection_confidence=0.5
 )
 
-# Carpeta para guardar imágenes subidas
-UPLOAD_FOLDER = 'static/uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 def analizar_imagen(ruta_imagen):
     """
-    Analiza una imagen y guarda una nueva imagen con puntos faciales clave detectados.
+    Analiza una imagen y devuelve una imagen con puntos faciales clave detectados.
     """
     # Leer y procesar la imagen
     imagen = cv2.imread(ruta_imagen)
@@ -43,16 +39,15 @@ def analizar_imagen(ruta_imagen):
         x = int(landmark.x * anchura)
         y = int(landmark.y * altura)
         cv2.drawMarker(
-            imagen, (x, y), (0, 0, 255),  # Color en formato BGR, aquí verde
+            imagen, (x, y), (0, 0, 255),  # Color en formato BGR, aquí rojo
             markerType=cv2.MARKER_CROSS,
             markerSize=15,  # Tamaño del marcador
             thickness=5     # Grosor de la línea del marcador
         )
 
-    # Guardar la imagen procesada
-    resultado_path = os.path.join(UPLOAD_FOLDER, "resultado.jpg")
-    cv2.imwrite(resultado_path, imagen)
-    return resultado_path
+    # Convertir la imagen procesada a formato PNG y guardar en un buffer
+    _, buffer = cv2.imencode('.jpg', imagen)
+    return io.BytesIO(buffer)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -66,11 +61,12 @@ def index():
         
         # Guardar y analizar la imagen
         if file:
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            file_path = os.path.join('temp', file.filename)  # Ruta temporal
             file.save(file_path)
             try:
-                resultado_path = analizar_imagen(file_path)
-                return render_template('index.html', resultado=resultado_path)
+                resultado_buffer = analizar_imagen(file_path)
+                resultado_buffer.seek(0)  # Reiniciar el puntero del buffer
+                return send_file(resultado_buffer, mimetype='image/jpeg')
             except Exception as e:
                 return render_template('index.html', error=str(e))
     return render_template('index.html')
