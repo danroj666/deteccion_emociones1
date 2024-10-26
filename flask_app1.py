@@ -4,11 +4,12 @@ import io
 import os
 import cv2
 import numpy as np
-import base64
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import matplotlib
 matplotlib.use('Agg')
 from pyngrok import ngrok
+import base64
 import mediapipe as mp
 
 # Crear la aplicación Flask
@@ -21,30 +22,19 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 
 # Configuración de MediaPipe para detección de rostros
 mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1)
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, refine_landmarks=True)
 
-def analizar_imagen(img_array):
-    """
-    Analiza una imagen y retorna una nueva imagen con puntos faciales clave detectados en formato base64.
-    """
-    # Convertir la imagen a RGB
-    img_rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(img_rgb)
+# Función para procesar y generar la imagen con puntos clave en el rostro
+def generate_image_with_keypoints(image_array, landmarks):
+    fig = plt.figure(figsize=(20, 20))
+    plt.imshow(image_array, cmap='gray')
 
-    if not results.multi_face_landmarks:
-        return None
-
-    # Dibujar los puntos en la imagen
-    fig, ax = plt.subplots()
-    ax.imshow(img_rgb)
-
-    # Selección de puntos clave principales
-    puntos_clave = [33, 133, 362, 263, 1, 61, 291, 199, 94, 0, 24, 130, 359, 288, 378]
-    for landmark in results.multi_face_landmarks:
-        for idx in puntos_clave:
-            x = int(landmark.landmark[idx].x * img_array.shape[1])
-            y = int(landmark.landmark[idx].y * img_array.shape[0])
-            ax.plot(x, y, 'm+', markersize=15)
+    # Dibujar cada punto clave en la imagen
+    altura, anchura = image_array.shape
+    for landmark in landmarks:
+        x = int(landmark.x * anchura)
+        y = int(landmark.y * altura)
+        plt.plot(x, y, 'm+', markersize=15)  # Dibuja el punto en morado y más grande
 
     # Guardar la imagen generada en memoria
     output = io.BytesIO()
@@ -52,41 +42,52 @@ def analizar_imagen(img_array):
     plt.close(fig)
     output.seek(0)
 
-    # Convertir la imagen a base64
-    encoded_image = base64.b64encode(output.getvalue()).decode('utf-8')
-    return encoded_image
+    return output
 
 # Página principal con el formulario para subir imágenes
 @app.route('/')
 def index():
+    # Obtener la lista de archivos subidos
     images = os.listdir(app.config['UPLOAD_FOLDER'])
     return render_template('index.html', images=images)
 
 # Ruta para subir y analizar la imagen
 @app.route('/analyze', methods=['POST'])
 def analyze_image():
+    # Verificar si se subió una imagen nueva o si se seleccionó una existente
     if 'file' in request.files:
         file = request.files['file']
         if file.filename == '':
             return jsonify({'error': 'No se ha subido ninguna imagen.'}), 400
+
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         img = cv2.imread(filepath)
-
     elif 'existing_file' in request.form:
         filename = request.form['existing_file']
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         img = cv2.imread(filepath)
-
     else:
         return jsonify({'error': 'No se ha proporcionado ninguna imagen.'}), 400
 
-    # Procesar la imagen y detectar rostros
-    encoded_image = analizar_imagen(img)
+    # Convertir la imagen a escala de grises
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    if not encoded_image:
+    # Detectar el rostro y los puntos clave en la imagen
+    resultados = face_mesh.process(img_rgb)
+
+    if not resultados.multi_face_landmarks:
         return jsonify({'error': 'No se detectaron rostros en la imagen.'}), 400
+
+    # Tomar los puntos faciales de la primera cara detectada
+    landmarks = resultados.multi_face_landmarks[0].landmark
+
+    # Generar la imagen con puntos clave en el rostro
+    output = generate_image_with_keypoints(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), landmarks)
+
+    # Convertir la imagen generada a base64 para enviarla en la respuesta
+    encoded_image = base64.b64encode(output.getvalue()).decode('utf-8')
 
     return jsonify({'image': encoded_image})
 
