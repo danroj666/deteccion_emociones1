@@ -4,44 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detección de Puntos Faciales</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            color: #333;
+        }
+        .image-container {
+            margin: 20px 0;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h2 class="text-center">Detección de Puntos Faciales en Imágenes</h2>
-        
-        <!-- Formulario para subir imagen (POST) -->
-        <form action="/analyze" method="POST" enctype="multipart/form-data" class="text-center my-4">
-            <input type="file" name="file" class="form-control mb-3" required>
-            <button type="submit" class="btn btn-primary">Subir y Procesar Imagen</button>
-        </form>
+    <h1>Sube una imagen para detectar puntos faciales</h1>
 
-        <!-- Seleccionar imagen existente -->
-        <form action="/analyze" method="POST" class="text-center my-4">
-            <select name="existing_file" class="form-control mb-3">
-                {% for image in images %}
-                <option value="{{ image }}">{{ image }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn btn-secondary">Analizar Imagen Existente</button>
-        </form>
+    <!-- Formulario para subir nueva imagen -->
+    <form id="upload-form" action="/analyze" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">Analizar Imagen</button>
+    </form>
 
-        <!-- Mensaje de error -->
-        {% if error %}
-        <div class="alert alert-danger text-center">
-            {{ error }}
-        </div>
-        {% endif %}
-        
-        <!-- Mostrar la imagen procesada -->
-        {% if resultado %}
-        <div class="text-center mt-4">
-            <h4>Resultado:</h4>
-            <img src="{{ url_for('static', filename='uploads/resultado.jpg') }}" class="img-fluid mt-3" alt="Imagen Procesada">
-        </div>
-        {% endif %}
-    </div>
+    <!-- Sección para mostrar la imagen procesada -->
+    <div id="result" class="image-container"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Manejo de formulario y respuesta de la imagen procesada
+        document.getElementById('upload-form').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevenir el comportamiento por defecto del formulario
+            const formData = new FormData(this);
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.image) {
+                        document.getElementById('result').innerHTML = `<img src="data:image/png;base64,${data.image}" alt="Imagen procesada con puntos clave">`;
+                    } else if (data.error) {
+                        document.getElementById('result').innerHTML = `<p>${data.error}</p>`;
+                    }
+                } else {
+                    document.getElementById('result').innerHTML = `<p>Error al procesar la imagen.</p>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `<p>Ocurrió un error al intentar procesar la imagen.</p>`;
+            }
+        });
+    </script>
 </body>
 </html>
