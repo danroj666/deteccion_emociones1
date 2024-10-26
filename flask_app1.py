@@ -10,7 +10,6 @@ import matplotlib
 matplotlib.use('Agg')
 from pyngrok import ngrok
 import base64
-import mediapipe as mp
 
 # Crear la aplicación Flask
 app = Flask(__name__)
@@ -20,41 +19,33 @@ app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads')
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
-# Configuración de MediaPipe para detección de rostros
-mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(
-    static_image_mode=True,
-    max_num_faces=1,
-    min_detection_confidence=0.5
-)
+# Cargar el clasificador de Haar para detección de rostros
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Función para procesar y generar la imagen con puntos faciales clave
-def generate_image_with_keypoints_mediapipe(image_array):
-    # Convertir la imagen a RGB para usar en MediaPipe
-    image_rgb = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(image_rgb)
-
-    if not results.multi_face_landmarks:
-        raise Exception("No se detectó rostro en la imagen")
-
+# Función para procesar y generar la imagen con puntos clave en el rostro
+def generate_image_with_keypoints(image_array, faces):
     fig, ax = plt.subplots(figsize=(10, 10))
-    ax.imshow(cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB))
+    ax.imshow(image_array, cmap='gray')  # Mostrar la imagen en escala de grises
 
-    # Selección de puntos clave principales
-    puntos_clave = [33, 133, 362, 263, 1, 61, 291, 199, 94, 0, 24, 130, 359, 288, 378]
-    altura, anchura, _ = image_array.shape
-    
-    for punto_idx in puntos_clave:
-        landmark = results.multi_face_landmarks[0].landmark[punto_idx]
-        x = int(landmark.x * anchura)
-        y = int(landmark.y * altura)
-        ax.plot(x, y, 'go', markersize=8)  # Dibuja puntos en verde
-    
+    # Definir puntos clave relativos en el rostro
+    puntos_clave = [  # Coordenadas relativas, ajustables según cada sección del rostro
+        (0.33, 0.33), (0.66, 0.33), (0.5, 0.2),   # Ojos y entrecejo
+        (0.33, 0.66), (0.66, 0.66), (0.5, 0.8),   # Nariz y boca
+        (0.2, 0.5), (0.8, 0.5)                    # Lados de la cara
+    ]
+
+    for (x, y, w, h) in faces:
+        for px, py in puntos_clave:
+            point_x = int(x + px * w)
+            point_y = int(y + py * h)
+            ax.plot(point_x, point_y, 'm+', markersize=15)  # Dibuja puntos en color morado
+
+    # Guardar la imagen generada en memoria
     output = io.BytesIO()
     FigureCanvas(fig).print_png(output)
     plt.close(fig)
     output.seek(0)
-    
+
     return output
 
 # Página principal con el formulario para subir imágenes
@@ -82,12 +73,21 @@ def analyze_image():
     else:
         return jsonify({'error': 'No se ha proporcionado ninguna imagen.'}), 400
 
-    try:
-        output = generate_image_with_keypoints_mediapipe(img)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+    # Convertir la imagen a escala de grises
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+    # Detectar el rostro en la imagen
+    faces = face_cascade.detectMultiScale(gray_img, scaleFactor=1.1, minNeighbors=5)
+
+    if len(faces) == 0:
+        return jsonify({'error': 'No se detectaron rostros en la imagen.'}), 400
+
+    # Generar la imagen con puntos clave en el rostro
+    output = generate_image_with_keypoints(gray_img, faces)
+
+    # Convertir la imagen generada a base64 para enviarla en la respuesta
     encoded_image = base64.b64encode(output.getvalue()).decode('utf-8')
+
     return jsonify({'image': encoded_image})
 
 # Ruta para servir los archivos subidos
@@ -96,6 +96,9 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
+    # Iniciar un túnel ngrok en el puerto 5000
     public_url = ngrok.connect(5000)
     print(f" * ngrok URL: {public_url}")
+
+    # Ejecuta Flask en el puerto 5000
     app.run(port=5000)
