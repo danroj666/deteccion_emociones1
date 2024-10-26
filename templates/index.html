@@ -3,101 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detección de Puntos Faciales</title>
-    <style>
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background-color: #f7f8fa;
-            color: #333;
-            min-height: 100vh;
-            margin: 0;
-            padding: 0 20px;
-        }
-        h1 {
-            font-size: 2em;
-            margin-bottom: 10px;
-            color: #222;
-        }
-        form {
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        input[type="file"] {
-            padding: 10px;
-            font-size: 1em;
-            color: #666;
-            background-color: #f1f1f1;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            outline: none;
-            margin-bottom: 15px;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 1em;
-            background-color: #5cb85c;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #4cae4c;
-        }
-        .result-container {
-            text-align: center;
-            margin-top: 30px;
-            max-width: 500px;
-            width: 100%;
-        }
-        .result-container h2 {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        .result-container img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        .error {
-            color: #d9534f;
-            margin-top: 20px;
-            font-weight: bold;
-        }
-    </style>
+    <title>Detección de Rostros</title>
 </head>
 <body>
-    <h1>Sube una imagen para detectar puntos faciales</h1>
-    <form action="/" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept="image/*">
-        <button type="submit">Analizar Imagen</button>
+    <h1>Sube una imagen para analizar</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <input type="submit" value="Subir">
     </form>
-
+    
     {% if resultado %}
-        <div class="result-container">
-            <h2>Resultado:</h2>
-            <img src="{{ resultado }}" alt="Resultado">
-        </div>
-    {% endif %}
-
-    {% if error %}
-        <div class="error">
-            <h2>Error: {{ error }}</h2>
-        </div>
+        <h2>Resultado:</h2>
+        <img src="{{ resultado }}" alt="Imagen procesada">
+    {% elif error %}
+        <p style="color: red;">{{ error }}</p>
     {% endif %}
 </body>
 </html>
-
