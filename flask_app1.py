@@ -1,24 +1,25 @@
-import cv2
-import os
-import mediapipe as mp
-from flask import Flask, request, render_template, redirect
+from flask import Flask, render_template, request, redirect, jsonify
 from werkzeug.utils import secure_filename
+import io
+import os
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import matplotlib 
+matplotlib.use('Agg')
 from pyngrok import ngrok
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
+
+# Crear el directorio para subir archivos si no existe
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
 
 # Configuración de MediaPipe para detección de rostros
-mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(
-    static_image_mode=True,
-    max_num_faces=1,
-    min_detection_confidence=0.5
-)
-
-# Carpeta para guardar imágenes subidas
-UPLOAD_FOLDER = 'static/uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+mp_face_mesh = cv2.face.FaceMesh.create()
+face_mesh = mp_face_mesh
 
 def analizar_imagen(ruta_imagen):
     """
@@ -38,7 +39,7 @@ def analizar_imagen(ruta_imagen):
     # Obtener dimensiones de la imagen
     altura, anchura, _ = imagen.shape
     
-    # Dibujar puntos en la imagen con tamaño, grosor y color personalizados
+    # Dibujar puntos en la imagen
     for punto_idx in puntos_clave:
         landmark = resultados.multi_face_landmarks[0].landmark[punto_idx]
         x = int(landmark.x * anchura)
@@ -51,7 +52,7 @@ def analizar_imagen(ruta_imagen):
         )
 
     # Guardar la imagen procesada
-    resultado_path = os.path.join(UPLOAD_FOLDER, "resultado.jpg")
+    resultado_path = os.path.join(app.config['UPLOAD_FOLDER'], "resultado.jpg")
     cv2.imwrite(resultado_path, imagen)
     return resultado_path
 
