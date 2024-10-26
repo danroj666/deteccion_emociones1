@@ -1,67 +1,66 @@
-
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect
 from werkzeug.utils import secure_filename
-import io
 import os
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-import matplotlib 
-matplotlib.use('Agg')
-from pyngrok import ngrok
+import mediapipe as mp
 import base64
+from pyngrok import ngrok
 
-# Crear la aplicación Flask
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads')
 
-
 # Crear el directorio para subir archivos si no existe
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Cargar el clasificador de Haar para detección de rostros
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+# Configuración de MediaPipe para detección de puntos faciales clave
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=True,
+    max_num_faces=1,
+    min_detection_confidence=0.5
+)
 
-# Función para procesar y generar la imagen con puntos clave en el rostro
-def generate_image_with_keypoints(image_array, faces):
-    fig = plt.figure(figsize=(20, 20))
-    plt.imshow(image_array, cmap='gray')  # Mostrar la imagen subida en escala de grises
+# Puntos faciales clave principales
+puntos_clave = [33, 133, 362, 263, 1, 61, 291, 199, 94, 0, 24, 130, 359, 288, 378]
 
-    for (x, y, w, h) in faces:
-        reduced_x = x + int(w * 0.2)  # Recortar el 20% de los bordes laterales
-        reduced_y = y + int(h * 0.2)  # Recortar el 20% desde arriba (excluir cabello)
-        reduced_w = int(w * 0.6)  # Solo el 60% de la anchura central
-        reduced_h = int(h * 0.6)  # Solo el 60% de la altura (centrada en el rostro)
+def analizar_imagen(ruta_imagen):
+    """
+    Analiza una imagen y genera una nueva con puntos faciales clave detectados.
+    """
+    # Leer y procesar la imagen
+    imagen = cv2.imread(ruta_imagen)
+    imagen_rgb = cv2.cvtColor(imagen, cv2.COLOR_BGR2RGB)
+    resultados = face_mesh.process(imagen_rgb)
+    
+    if not resultados.multi_face_landmarks:
+        raise Exception("No se detectó rostro en la imagen")
 
-        num_points = 15  # Número de puntos clave (ajustable)
+    altura, anchura, _ = imagen.shape
 
-        for _ in range(num_points):
-            point_x = np.random.randint(reduced_x, reduced_x + reduced_w)
-            point_y = np.random.randint(reduced_y, reduced_y + reduced_h)
+    # Dibujar puntos en la imagen
+    for punto_idx in puntos_clave:
+        landmark = resultados.multi_face_landmarks[0].landmark[punto_idx]
+        x = int(landmark.x * anchura)
+        y = int(landmark.y * altura)
+        cv2.drawMarker(
+            imagen, (x, y), (255, 0, 0),  # Color en formato BGR
+            markerType=cv2.MARKER_CROSS,
+            markerSize=15,
+            thickness=5
+        )
 
-            plt.plot(point_x, point_y, 'm+', markersize=15)  # Dibuja el punto en morado y más grande
+    # Convertir la imagen procesada a base64
+    _, buffer = cv2.imencode('.jpg', imagen)
+    return base64.b64encode(buffer).decode('utf-8')
 
-    # Guardar la imagen generada en memoria
-    output = io.BytesIO()
-    FigureCanvas(fig).print_png(output)
-    plt.close(fig)
-    output.seek(0)
-
-    return output
-
-# Página principal con el formulario para subir imágenes
 @app.route('/')
 def index():
-    # Obtener la lista de archivos subidos
     images = os.listdir(app.config['UPLOAD_FOLDER'])
     return render_template('index.html', images=images)
 
-# Ruta para subir y analizar la imagen
 @app.route('/analyze', methods=['POST'])
 def analyze_image():
-    # Verificar si se subió una imagen nueva o si se seleccionó una existente
     if 'file' in request.files:
         file = request.files['file']
         if file.filename == '':
@@ -70,37 +69,23 @@ def analyze_image():
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
-        img = cv2.imread(filepath)
     elif 'existing_file' in request.form:
         filename = request.form['existing_file']
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        img = cv2.imread(filepath)
     else:
         return jsonify({'error': 'No se ha proporcionado ninguna imagen.'}), 400
 
-    # Convertir la imagen a escala de grises
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    try:
+        # Analizar y generar la imagen procesada con puntos faciales clave
+        encoded_image = analizar_imagen(filepath)
+        return jsonify({'image': encoded_image})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
-    # Detectar el rostro en la imagen
-    faces = face_cascade.detectMultiScale(gray_img, scaleFactor=1.1, minNeighbors=5)
-
-    if len(faces) == 0:
-        return jsonify({'error': 'No se detectaron rostros en la imagen.'}), 400
-
-    # Generar la imagen con puntos clave en el rostro
-    output = generate_image_with_keypoints(gray_img, faces)
-
-    # Convertir la imagen generada a base64 para enviarla en la respuesta
-    encoded_image = base64.b64encode(output.getvalue()).decode('utf-8')
-
-    return jsonify({'image': encoded_image})
-
-# Ruta para servir los archivos subidos
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# Ejecuta la aplicación Flask
 if __name__ == '__main__':
     # Iniciar un túnel ngrok en el puerto 5000
     public_url = ngrok.connect(5000)
