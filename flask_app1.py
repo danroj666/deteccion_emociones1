@@ -6,35 +6,41 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-import matplotlib
+import matplotlib 
 matplotlib.use('Agg')
 from pyngrok import ngrok
 import base64
-import mediapipe as mp
 
 # Crear la aplicación Flask
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads')
 
+
 # Crear el directorio para subir archivos si no existe
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
-# Configuración de MediaPipe para detección de rostros
-mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, refine_landmarks=True)
+# Cargar el clasificador de Haar para detección de rostros
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 # Función para procesar y generar la imagen con puntos clave en el rostro
-def generate_image_with_keypoints(image_array, landmarks):
+def generate_image_with_keypoints(image_array, faces):
     fig = plt.figure(figsize=(20, 20))
-    plt.imshow(image_array, cmap='gray')
+    plt.imshow(image_array, cmap='gray')  # Mostrar la imagen subida en escala de grises
 
-    # Dibujar cada punto clave en la imagen
-    altura, anchura = image_array.shape
-    for landmark in landmarks:
-        x = int(landmark.x * anchura)
-        y = int(landmark.y * altura)
-        plt.plot(x, y, 'm+', markersize=15)  # Dibuja el punto en morado y más grande
+    for (x, y, w, h) in faces:
+        reduced_x = x + int(w * 0.2)  # Recortar el 20% de los bordes laterales
+        reduced_y = y + int(h * 0.2)  # Recortar el 20% desde arriba (excluir cabello)
+        reduced_w = int(w * 0.6)  # Solo el 60% de la anchura central
+        reduced_h = int(h * 0.6)  # Solo el 60% de la altura (centrada en el rostro)
+
+        num_points = 15  # Número de puntos clave (ajustable)
+
+        for _ in range(num_points):
+            point_x = np.random.randint(reduced_x, reduced_x + reduced_w)
+            point_y = np.random.randint(reduced_y, reduced_y + reduced_h)
+
+            plt.plot(point_x, point_y, 'm+', markersize=15)  # Dibuja el punto en morado y más grande
 
     # Guardar la imagen generada en memoria
     output = io.BytesIO()
@@ -72,19 +78,16 @@ def analyze_image():
         return jsonify({'error': 'No se ha proporcionado ninguna imagen.'}), 400
 
     # Convertir la imagen a escala de grises
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Detectar el rostro y los puntos clave en la imagen
-    resultados = face_mesh.process(img_rgb)
+    # Detectar el rostro en la imagen
+    faces = face_cascade.detectMultiScale(gray_img, scaleFactor=1.1, minNeighbors=5)
 
-    if not resultados.multi_face_landmarks:
+    if len(faces) == 0:
         return jsonify({'error': 'No se detectaron rostros en la imagen.'}), 400
 
-    # Tomar los puntos faciales de la primera cara detectada
-    landmarks = resultados.multi_face_landmarks[0].landmark
-
     # Generar la imagen con puntos clave en el rostro
-    output = generate_image_with_keypoints(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), landmarks)
+    output = generate_image_with_keypoints(gray_img, faces)
 
     # Convertir la imagen generada a base64 para enviarla en la respuesta
     encoded_image = base64.b64encode(output.getvalue()).decode('utf-8')
