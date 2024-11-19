@@ -50,6 +50,20 @@ def generate_image_with_keypoints(image_array, faces):
 
     return output
 
+# Función para procesar la imagen
+def process_image(img):
+    # Aumentar brillo
+    brightness_factor = 1.5
+    bright_img = cv2.convertScaleAbs(img, alpha=brightness_factor, beta=30)
+
+    # Voltear horizontalmente
+    flipped_img = cv2.flip(bright_img, 1)
+
+    # Voltear de cabeza (verticalmente)
+    inverted_img = cv2.flip(flipped_img, 0)
+
+    return inverted_img
+
 # Página principal con el formulario para subir imágenes
 @app.route('/')
 def index():
@@ -77,10 +91,13 @@ def analyze_image():
     else:
         return jsonify({'error': 'No se ha proporcionado ninguna imagen.'}), 400
 
-    # Convertir la imagen a escala de grises
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Procesar la imagen (brillo y volteos)
+    processed_img = process_image(img)
 
-    # Detectar el rostro en la imagen
+    # Convertir la imagen procesada a escala de grises
+    gray_img = cv2.cvtColor(processed_img, cv2.COLOR_BGR2GRAY)
+
+    # Detectar el rostro en la imagen procesada
     faces = face_cascade.detectMultiScale(gray_img, scaleFactor=1.1, minNeighbors=5)
 
     if len(faces) == 0:
