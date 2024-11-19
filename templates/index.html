@@ -25,8 +25,8 @@
                 </form>
             </div>
 
-            <!-- Results Section -->
-            <div id="results" class="hidden mb-4">
+            <!-- Sección de Resultados -->
+            <div id="results" class="d-none mb-4">
                 <h2 class="h5 font-weight-bold text-white mb-3">Resultados del Análisis</h2>
                 <div class="border rounded p-2 bg-light shadow">
                     <div class="text-center mb-2">
@@ -38,11 +38,10 @@
                 </div>
             </div>
 
-            <!-- Error Display -->
-            <div id="error" class="hidden mt-4 alert alert-danger" style="display:none;">
-            </div>
+            <!-- Mostrar errores -->
+            <div id="error" class="d-none mt-4 alert alert-danger"></div>
 
-            <!-- Existing Images Section -->
+            <!-- Sección de imágenes existentes -->
             {% if images %}
             <div class="mt-4">
                 <h2 class="h5 font-weight-bold text-white mb-3">Imágenes Cargadas Previamente</h2>
@@ -74,16 +73,16 @@
                 contentType: false,
                 processData: false,
                 success: function (response) {
-                    $('#results').removeClass('hidden');
+                    $('#results').removeClass('d-none');
                     $('#resultImage').attr('src', 'data:image/png;base64,' + response.image);
-                    $('#error').hide();  // Ocultar el mensaje de error si fue visible
+                    $('#error').hide();
                 },
                 error: function (xhr) {
                     $('#error')
-                        .removeClass('hidden')
+                        .removeClass('d-none')
                         .show()
-                        .text(xhr.responseJSON?.error || 'Ocurrió un error');
-                    $('#results').addClass('hidden'); // Ocultar resultados si hay error
+                        .text(xhr.responseJSON?.error || 'Ocurrió un error.');
+                    $('#results').addClass('d-none');
                 }
             });
         });
@@ -100,16 +99,16 @@
                 contentType: false,
                 processData: false,
                 success: function (response) {
-                    $('#results').removeClass('hidden');
+                    $('#results').removeClass('d-none');
                     $('#resultImage').attr('src', 'data:image/png;base64,' + response.image);
-                    $('#error').hide();  // Ocultar el mensaje de error si fue visible
+                    $('#error').hide();
                 },
                 error: function (xhr) {
                     $('#error')
-                        .removeClass('hidden')
+                        .removeClass('d-none')
                         .show()
-                        .text(xhr.responseJSON?.error || 'Ocurrió un error');
-                    $('#results').addClass('hidden'); // Ocultar resultados si hay error
+                        .text(xhr.responseJSON?.error || 'Ocurrió un error.');
+                    $('#results').addClass('d-none');
                 }
             });
         }
@@ -119,7 +118,7 @@
             const imageSrc = $('#resultImage').attr('src');
             const link = document.createElement('a');
             link.href = imageSrc;
-            link.download = 'resultado_analisis.png'; // Nombre del archivo a descargar
+            link.download = 'resultado_analisis.png';
             link.click();
         }
     </script>
