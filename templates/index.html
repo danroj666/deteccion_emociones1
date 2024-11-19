@@ -25,12 +25,14 @@
                 </form>
             </div>
 
-            <!-- Sección de Resultados -->
-            <div id="results" class="d-none mb-4">
+            <!-- Results Section -->
+            <div id="results" class="hidden mb-4">
                 <h2 class="h5 font-weight-bold text-white mb-3">Resultados del Análisis</h2>
                 <div class="border rounded p-2 bg-light shadow">
                     <div class="text-center mb-2">
-                        <img id="resultImage" class="img-fluid rounded" src="" alt="Resultado del Análisis">
+                        <img id="resultImageGray" class="img-fluid rounded" src="" alt="Resultado de la Imagen Original">
+                        <img id="resultImageBright" class="img-fluid rounded" src="" alt="Resultado de la Imagen Brillante">
+                        <img id="resultImageFlipped" class="img-fluid rounded" src="" alt="Resultado de la Imagen Volteada">
                     </div>
                     <div class="text-center">
                         <button class="btn btn-primary" onclick="downloadImage()">Descargar Imagen</button>
@@ -38,25 +40,9 @@
                 </div>
             </div>
 
-            <!-- Mostrar errores -->
-            <div id="error" class="d-none mt-4 alert alert-danger"></div>
+            <!-- Error Display -->
+            <div id="error" class="hidden mt-4 alert alert-danger" style="display:none;"></div>
 
-            <!-- Sección de imágenes existentes -->
-            {% if images %}
-            <div class="mt-4">
-                <h2 class="h5 font-weight-bold text-white mb-3">Imágenes Cargadas Previamente</h2>
-                <div class="row">
-                    {% for image in images %}
-                    <div class="col-6 mb-2">
-                        <img src="{{ url_for('uploaded_file', filename=image) }}" 
-                             alt="{{ image }}" 
-                             class="img-thumbnail" 
-                             onclick="analyzeExisting('{{ image }}')">
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
         </div>
     </div>
 
@@ -73,54 +59,17 @@
                 contentType: false,
                 processData: false,
                 success: function (response) {
-                    $('#results').removeClass('d-none');
-                    $('#resultImage').attr('src', 'data:image/png;base64,' + response.image);
-                    $('#error').hide();
+                    $('#results').removeClass('hidden');
+                    $('#resultImageGray').attr('src', 'data:image/png;base64,' + response.image_gray);
+                    $('#resultImageBright').attr('src', 'data:image/png;base64,' + response.image_bright);
+                    $('#resultImageFlipped').attr('src', 'data:image/png;base64,' + response.image_flipped);
+                    $('#error').hide();  // Ocultar el mensaje de error si fue visible
                 },
                 error: function (xhr) {
-                    $('#error')
-                        .removeClass('d-none')
-                        .show()
-                        .text(xhr.responseJSON?.error || 'Ocurrió un error.');
-                    $('#results').addClass('d-none');
+                    $('#error').show().text('Ocurrió un error al procesar la imagen.');
                 }
             });
         });
-
-        // Manejar el análisis de imágenes existentes
-        function analyzeExisting(filename) {
-            const formData = new FormData();
-            formData.append('existing_file', filename);
-
-            $.ajax({
-                url: '/analyze',
-                type: 'POST',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function (response) {
-                    $('#results').removeClass('d-none');
-                    $('#resultImage').attr('src', 'data:image/png;base64,' + response.image);
-                    $('#error').hide();
-                },
-                error: function (xhr) {
-                    $('#error')
-                        .removeClass('d-none')
-                        .show()
-                        .text(xhr.responseJSON?.error || 'Ocurrió un error.');
-                    $('#results').addClass('d-none');
-                }
-            });
-        }
-
-        // Descargar imagen
-        function downloadImage() {
-            const imageSrc = $('#resultImage').attr('src');
-            const link = document.createElement('a');
-            link.href = imageSrc;
-            link.download = 'resultado_analisis.png';
-            link.click();
-        }
     </script>
 </body>
 </html>
