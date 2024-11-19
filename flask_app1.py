@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-import matplotlib 
+import matplotlib
 matplotlib.use('Agg')
 from pyngrok import ngrok
 import base64
@@ -50,19 +50,11 @@ def generate_image_with_keypoints(image_array, faces):
 
     return output
 
-# Función para procesar la imagen
-def process_image(img):
-    # Aumentar brillo
-    brightness_factor = 1.5
-    bright_img = cv2.convertScaleAbs(img, alpha=brightness_factor, beta=30)
-
-    # Voltear horizontalmente
-    flipped_img = cv2.flip(bright_img, 1)
-
-    # Voltear de cabeza (verticalmente)
-    inverted_img = cv2.flip(flipped_img, 0)
-
-    return inverted_img
+# Función para aumentar el brillo de la imagen
+def increase_brightness(image, value=30):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    hsv[:, :, 2] = np.clip(hsv[:, :, 2] + value, 0, 255)
+    return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
 # Página principal con el formulario para subir imágenes
 @app.route('/')
@@ -91,20 +83,23 @@ def analyze_image():
     else:
         return jsonify({'error': 'No se ha proporcionado ninguna imagen.'}), 400
 
-    # Procesar la imagen (brillo y volteos)
-    processed_img = process_image(img)
+    # Convertir la imagen a escala de grises
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Convertir la imagen procesada a escala de grises
-    gray_img = cv2.cvtColor(processed_img, cv2.COLOR_BGR2GRAY)
-
-    # Detectar el rostro en la imagen procesada
+    # Detectar el rostro en la imagen
     faces = face_cascade.detectMultiScale(gray_img, scaleFactor=1.1, minNeighbors=5)
 
     if len(faces) == 0:
         return jsonify({'error': 'No se detectaron rostros en la imagen.'}), 400
 
+    # Aumentar el brillo de la imagen
+    bright_img = increase_brightness(img)
+
+    # Voltear la imagen
+    flipped_img = cv2.flip(bright_img, 0)  # 0 para voltear de cabeza
+
     # Generar la imagen con puntos clave en el rostro
-    output = generate_image_with_keypoints(gray_img, faces)
+    output = generate_image_with_keypoints(flipped_img, faces)
 
     # Convertir la imagen generada a base64 para enviarla en la respuesta
     encoded_image = base64.b64encode(output.getvalue()).decode('utf-8')
@@ -123,4 +118,4 @@ if __name__ == '__main__':
     print(f" * ngrok URL: {public_url}")
 
     # Ejecuta Flask en el puerto 5000
-    app.run(port=5000)
+    app.run(port=5000) 
