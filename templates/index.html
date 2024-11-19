@@ -3,73 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebFacial</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <title>Subir y Analizar Imagen</title>
+    <style>
+        img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+        }
+        .image-container {
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
-<body class="bg-dark text-light">
-    <div class="container d-flex align-items-center justify-content-center min-vh-100">
-        <div class="card shadow-lg p-4" style="width: 100%; max-width: 600px;">
-            <h1 class="text-center font-weight-bold mb-4 text-dark">WebFacial</h1>
-            
-            <div class="mb-4">
-                <h2 class="h5 font-weight-bold text-white mb-3">Subir Imagen</h2>
-                <form id="uploadForm">
-                    <div class="input-group mb-3">
-                        <input type="file" class="form-control" name="file" accept=".jpg,.jpeg,.png" required>
-                        <div class="input-group-append">
-                            <button class="btn btn-success" type="submit">Analizar</button>
-                        </div>
-                    </div>
-                </form>
+<body>
+
+    <h1>Subir y Analizar Imagen</h1>
+
+    <!-- Formulario para subir imagen -->
+    <form action="/analyze" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">Subir Imagen</button>
+    </form>
+
+    <!-- Mostrar imágenes subidas anteriormente -->
+    <h2>Imágenes Subidas</h2>
+    <div>
+        {% for image in images %}
+            <div class="image-container">
+                <img src="{{ url_for('uploaded_file', filename=image) }}" alt="{{ image }}">
             </div>
+        {% endfor %}
+    </div>
 
-            <!-- Results Section -->
-            <div id="results" class="hidden mb-4">
-                <h2 class="h5 font-weight-bold text-white mb-3">Resultados del Análisis</h2>
-                <div class="border rounded p-2 bg-light shadow">
-                    <div class="text-center mb-2">
-                        <img id="resultImageGray" class="img-fluid rounded" src="" alt="Resultado de la Imagen Original">
-                        <img id="resultImageBright" class="img-fluid rounded" src="" alt="Resultado de la Imagen Brillante">
-                        <img id="resultImageFlipped" class="img-fluid rounded" src="" alt="Resultado de la Imagen Volteada">
-                    </div>
-                    <div class="text-center">
-                        <button class="btn btn-primary" onclick="downloadImage()">Descargar Imagen</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Error Display -->
-            <div id="error" class="hidden mt-4 alert alert-danger" style="display:none;"></div>
-
-        </div>
+    <!-- Mostrar las imágenes analizadas -->
+    <h2>Resultados del Análisis</h2>
+    <div id="results">
+        <!-- Las imágenes serán añadidas dinámicamente después de subir una imagen -->
     </div>
 
     <script>
-        // Manejar la subida de nuevas imágenes
-        $('#uploadForm').submit(function (e) {
-            e.preventDefault();
-            const formData = new FormData(this);
+        // Función para manejar la respuesta de la imagen analizada
+        function displayResults(data) {
+            const resultsContainer = document.getElementById("results");
 
-            $.ajax({
-                url: '/analyze',
-                type: 'POST',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function (response) {
-                    $('#results').removeClass('hidden');
-                    $('#resultImageGray').attr('src', 'data:image/png;base64,' + response.image_gray);
-                    $('#resultImageBright').attr('src', 'data:image/png;base64,' + response.image_bright);
-                    $('#resultImageFlipped').attr('src', 'data:image/png;base64,' + response.image_flipped);
-                    $('#error').hide();  // Ocultar el mensaje de error si fue visible
-                },
-                error: function (xhr) {
-                    $('#error').show().text('Ocurrió un error al procesar la imagen.');
-                }
+            // Limpiar resultados anteriores
+            resultsContainer.innerHTML = '';
+
+            // Mostrar la imagen con puntos clave
+            const imgElement = document.createElement("img");
+            imgElement.src = 'data:image/png;base64,' + data.image;
+            resultsContainer.appendChild(imgElement);
+
+            // Mostrar imágenes generadas (original, girada y con brillo aumentado)
+            data.images.forEach(image => {
+                const imageElement = document.createElement("img");
+                imageElement.src = image.path;
+                resultsContainer.appendChild(imageElement);
             });
-        });
+        }
+
+        // Manejador del formulario
+        const form = document.querySelector("form");
+        form.onsubmit = async function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch("/analyze", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error("Error al analizar la imagen");
+                }
+
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        };
     </script>
 </body>
 </html>
